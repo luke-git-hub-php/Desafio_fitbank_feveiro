@@ -1,6 +1,7 @@
 ﻿using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -50,31 +51,29 @@ namespace pokemon.Entities
         {
             List<Card> cardsList = new List<Card>();
             List<List<string>> listMultiCards = new List<List<string>>();
-            _ = Parallel.ForEach(links.links,
+            Parallel.ForEach(links.links,
                 link =>
                 {
                     var webClient = new WebClient();
                     string page = webClient.DownloadString("https://www.pokemon.com" + link);
                     HtmlDocument htmlDocument = new HtmlDocument();
                     htmlDocument.LoadHtml(page);
-                    _ = Parallel.ForEach(htmlDocument.DocumentNode.SelectNodes("//div[@class='color-block color-block-gray']"),
-                    dom =>
-                    {
-                        var tag = dom.ChildNodes["h1"];
-                        if (tag != null && link != null)
+                    Parallel.ForEach(htmlDocument.DocumentNode.SelectNodes("//div[@class='color-block color-block-gray']"),
+                        dom =>
                         {
-                            Card cards = new Card
+                            var tag = dom.ChildNodes["h1"];
+                            if (tag != null && link != null)
                             {
-                                Name = tag.InnerText,
-                                Numbering = tag.InnerText,
-                                Expansion = tag.InnerText,
-                                Url = "https://www.pokemon.com" + link,
-                                Image = links.images.FirstOrDefault(x => x.Key == link).Value
-                            };
-                            tag = htmlDocument.DocumentNode.SelectSingleNode("//div[@class='stats-footer']/span");
-                            tag = htmlDocument.DocumentNode.SelectSingleNode("//div[@class='stats-footer']/h3");
-                            cardsList.Add(cards);
-                        }
+                                Card cards = new Card();
+                                cards.Name = tag.InnerText;
+                                tag = htmlDocument.DocumentNode.SelectSingleNode("//div[@class='stats-footer']/span");
+                                cards.Numbering = tag.InnerText;
+                                tag = htmlDocument.DocumentNode.SelectSingleNode("//div[@class='stats-footer']/h3");
+                                cards.Expansion = tag.InnerText;
+                                cards.Url = "https://www.pokemon.com" + link;
+                                cards.Image = links.images.FirstOrDefault(x => x.Key == link).Value;
+                                cardsList.Add(cards);
+                            }
                     });
                 });
             if (options == 2)
@@ -82,62 +81,87 @@ namespace pokemon.Entities
                 for (var i = 0; i < numpages; i++)
                 {
                     var count = 1;
-                    string path = @"C:Pokemon\" + i + ".json";
+                    string path = @"C:Pokemon\cards" + i + ".json";
+                    string path2 = @"C:Pokemon\";
                     if (!Directory.Exists(path))
                     {
-                        DirectoryInfo directory = Directory.CreateDirectory(path);
+                        DirectoryInfo directory = Directory.CreateDirectory(path2);
                     }
+                   
                     FileInfo filePrimary = new FileInfo(path);
                     string json = string.Empty;
                     foreach (var card in cardsList)
                     {
-                        if (count <= 12)
+                        if (count <= numpages)
                         {
-                            json += JsonConvert.SerializeObject(card) + ",";
-                            count++;
+                            /*string line;
+                            int countline = 0;
+                            StreamReader file = new StreamReader(path);
+                            while ((line = file.ReadLine()) != null)
+                            {
+                                countline++;
+                            }
+                            if (json == line) {*/
+                                json += JsonConvert.SerializeObject(card) + "," + "\r\n";
+                                count++;
+                            //}
                         }
                         else
                         {
                             continue;
                         }
                     }
-
-                    if (!filePrimary.Exists /*!string.IsNullOrEmpty(json*/)
+                    filePrimary.Delete();
+                    if (!filePrimary.Exists && !string.IsNullOrEmpty(json))
                     {
+                        
                         StreamWriter file = filePrimary.CreateText();
                         json = json.Remove(json.Length - 1);
                         file.WriteLine("[" + json + "]");
                         file.WriteLine();
                         file.Close();
                     }
+                    else 
+                    {                                                
+                        Console.WriteLine("Já existe o arquivo");
+                    }
                 }
             }
             else
             {
-                string path = @"C:\Pokemon\";
-                string path2 = @"C:\Pokemon\cards.json";
-                if (!Directory.Exists(path))
-                {
-                    DirectoryInfo directory = Directory.CreateDirectory(path);
-                }
-                FileInfo fi = new FileInfo(path2);
-                string json = string.Empty;
-                foreach (var card in cardsList)
-                {
-                    json += JsonConvert.SerializeObject(card) + ",";
-                }
-
-                if (!fi.Exists && !string.IsNullOrEmpty(json))
-                {
-                    using (StreamWriter file = fi.CreateText())
+                    var count = 1;
+                    string path = @"C:\Pokemon\";
+                    string path2 = @"C:\Pokemon\cards.json";
+                    if (!Directory.Exists(path))
                     {
+                        DirectoryInfo directory = Directory.CreateDirectory(path);
+                    }
+                    FileInfo filemultiple = new FileInfo(path2);
+                    string json = string.Empty;
+                    foreach (var card in cardsList)
+                    {
+                    
+                        if (count <= numpages)
+                        {
+                            json += JsonConvert.SerializeObject(card) + "," + "\r\n";
+                            count++;
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    
+                    }
+                    filemultiple.Delete();
+                    if (!filemultiple.Exists && !string.IsNullOrEmpty(json))
+                    {
+                        using StreamWriter file = filemultiple.CreateText();
                         json = json.Remove(json.Length - 1);
                         file.WriteLine("[" + json + "]");
                         file.WriteLine();
                         file.Close();
                     }
                 }
-            }
         }
     }
 }
